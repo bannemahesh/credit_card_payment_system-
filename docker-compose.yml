@@ -1,0 +1,66 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: credit_card_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: credit_card_system
+      MYSQL_USER: credit_user
+      MYSQL_PASSWORD: credit_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  django:
+    build:
+      context: .
+      dockerfile: docker/django/Dockerfile
+    container_name: credit_card_django
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      SECRET_KEY: Django-Docker-43hirbh3iu4h2ib2bq
+      DB_NAME: credit_card_system
+      DB_USER: credit_user
+      DB_PASSWORD: credit_password
+      DB_HOST: mysql
+      DB_PORT: 3306
+    ports:
+      - "8000:8000"
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: docker/fastapi/Dockerfile
+    container_name: credit_card_fastapi
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      SECRET_KEY: Django-Docker-43hirbh3iu4h2ib2bq
+      DB_NAME: credit_card_system
+      DB_USER: credit_user
+      DB_PASSWORD: credit_password
+      DB_HOST: mysql
+      DB_PORT: 3306
+    ports:
+      - "8001:8001"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    container_name: credit_card_frontend
+    restart: unless-stopped
+    depends_on:
+      - django
+      - fastapi
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql_data:
