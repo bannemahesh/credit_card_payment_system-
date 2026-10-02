@@ -21,28 +21,45 @@ function Login() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    setError("");
-    setLoading(true);
+  setError("");
+  setLoading(true);
 
-    try {
-      const response = await api.post("/users/login/", form);
+  try {
+    const response = await api.post("/users/login/", form);
 
-      localStorage.setItem("access_token", response.data.access);
-      localStorage.setItem("refresh_token", response.data.refresh);
+    const accessToken = response.data.access;
+    const refreshToken = response.data.refresh;
 
+    localStorage.setItem("access_token", accessToken);
+    localStorage.setItem("refresh_token", refreshToken);
+
+    // Get the logged-in user's details
+    const userResponse = await api.get("/users/me/", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const user = userResponse.data;
+
+    // Admin/staff → Admin Dashboard
+    if (user.is_staff || user.is_superuser) {
+      navigate("/admin-dashboard");
+    } else {
+      // Normal user → User Dashboard
       navigate("/dashboard");
-    } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-          "Invalid username or password."
-      );
-    } finally {
-      setLoading(false);
     }
-  };
-
+  } catch (err) {
+    setError(
+      err.response?.data?.detail ||
+        "Invalid username or password."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="min-h-screen bg-slate-950">
       <div className="grid min-h-screen lg:grid-cols-2">

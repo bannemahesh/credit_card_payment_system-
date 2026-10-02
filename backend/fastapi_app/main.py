@@ -59,6 +59,7 @@ def get_current_user(
             status_code=401,
             detail=f"JWT validation failed: {str(e)}"
         )
+
 class PaymentRequest(BaseModel):
     user_id: int
     card_id: int

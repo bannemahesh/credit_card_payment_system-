@@ -110,77 +110,91 @@ function MakePayment() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  setMessage("");
+  setError("");
+  setTransactionId("");
+
+  const userId = getUserIdFromToken();
+
+  if (!userId) {
+    setError("Your session has expired. Please sign in again.");
+    return;
+  }
+
+  if (!form.card_id || !form.amount) {
+    setError("Please select a card and enter an amount.");
+    return;
+  }
+
+  if (amount <= 0) {
+    setError("Payment amount must be greater than zero.");
+    return;
+  }
+
+  setProcessing(true);
+
+  try {
+    const response = await fastApi.post("/payments/", {
+      user_id: userId,
+      card_id: Number(form.card_id),
+      amount: amount,
+    });
+
+    const data = response.data;
+
+    setTransactionId(data.transaction_id || "");
+
+    if (data.status === "SUCCESS") {
+      setMessage(data.message || "Payment successful");
+      setError("");
+
+      // Update displayed balance immediately
+      setCards((currentCards) =>
+        currentCards.map((card) =>
+          card.id === Number(form.card_id)
+            ? {
+                ...card,
+                available_balance:
+                  Number(card.available_balance) - amount,
+              }
+            : card
+        )
+      );
+
+      setForm({
+        card_id: "",
+        amount: "",
+      });
+    } else if (data.status === "FAILED") {
+      setError(data.message || "Payment failed.");
+      setMessage("");
+
+      setForm({
+        card_id: "",
+        amount: "",
+      });
+    } else {
+      setError(data.detail || "Payment request failed.");
+      setMessage("");
+    }
+  } catch (err) {
+    console.error("Payment error:", err);
+
+    setError(
+      err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        "Unable to process payment."
+    );
 
     setMessage("");
-    setError("");
-    setTransactionId("");
-
-    const userId = getUserIdFromToken();
-
-    if (!userId) {
-      setError("Your session has expired. Please sign in again.");
-      return;
-    }
-
-    if (!form.card_id || !form.amount) {
-      setError("Please select a card and enter an amount.");
-      return;
-    }
-
-    if (amount <= 0) {
-      setError("Payment amount must be greater than zero.");
-      return;
-    }
-
-    setProcessing(true);
-
-    try {
-      const token = localStorage.getItem("access_token");
-
-      const response = await fastApi.post("/payments/", {
-        user_id: userId,
-        card_id: Number(form.card_id),
-        amount: amount,
-      });
-
-      const data = await response.data;
-
-      if (!response.ok) {
-        throw new Error(
-          data.detail || "Payment request failed."
-        );
-      }
-
-      setTransactionId(data.transaction_id);
-
-      if (data.status === "SUCCESS") {
-        setMessage(data.message);
-        setError("");
-
-        setForm({
-          card_id: "",
-          amount: "",
-        });
-      } else {
-        setError(data.message);
-        setMessage("");
-
-        setForm({
-          card_id: "",
-          amount: "",
-        });
-      }
-    } catch (err) {
-      setError(
-        err.message || "Unable to process payment."
-      );
-      setMessage("");
-    } finally {
-      setProcessing(false);
-    }
-  };
+  } finally {
+    setProcessing(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-50">
